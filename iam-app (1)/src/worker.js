@@ -1,57 +1,38 @@
 // IAM Demo: static site + JSON auth API on one Cloudflare Worker.
-// Storage: D1 (users, sessions, audit). Passwords: PBKDF2-SHA256. Sessions: random token in an HttpOnly cookie.
+// Storage: D1 (users, sessions). Passwords: PBKDF2-SHA256. Sessions: random token in an HttpOnly cookie.
 
 const ITER = 100000;                 // Workers' PBKDF2 maximum
 const SESSION_SECONDS = 7 * 24 * 3600;
-const AUDIT_KEEP_SECONDS = 90 * 24 * 3600;
 const MAX_FAILS = 5;
 const LOCK_SECONDS = 600;
-const PROTECTED = ['/dashboard', '/profile', '/security', '/activity', '/admin'];
+const PROTECTED = ['/dashboard', '/profile', '/admin'];
 const enc = new TextEncoder();
 const now = () => Math.floor(Date.now() / 1000);
 
 /* ---------- schema (created automatically on first request) ---------- */
 let schemaPromise;
 function ensureSchema(env) {
-  schemaPromise ??= (async () => {
-    await env.DB.batch([
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-        email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'user',
-        status TEXT NOT NULL DEFAULT 'active',
-        failed_count INTEGER NOT NULL DEFAULT 0,
-        locked_until INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        last_login INTEGER
-      )`),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS sessions (
-        token_hash TEXT PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        created_at INTEGER NOT NULL,
-        expires_at INTEGER NOT NULL,
-        device TEXT,
-        ip TEXT
-      )`),
-      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)'),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS audit (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        username TEXT,
-        event TEXT NOT NULL,
-        detail TEXT,
-        ip TEXT,
-        created_at INTEGER NOT NULL
-      )`),
-      env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_audit_user ON audit(user_id, id)')
-    ]);
-    // Older databases made before device/ip existed: add the columns, ignore "duplicate column".
-    for (const col of ['device', 'ip']) {
-      try { await env.DB.prepare(`ALTER TABLE sessions ADD COLUMN ${col} TEXT`).run(); } catch { /* already there */ }
-    }
-  })().catch(err => { schemaPromise = undefined; throw err; });
+  schemaPromise ??= env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      status TEXT NOT NULL DEFAULT 'active',
+      failed_count INTEGER NOT NULL DEFAULT 0,
+      locked_until INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      last_login INTEGER
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )`),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)')
+  ]).catch(err => { schemaPromise = undefined; throw err; });
   return schemaPromise;
 }
 
@@ -118,22 +99,6 @@ const sessionCookie = (token, maxAge) =>
 async function readJson(request) {
   try { return await request.json(); } catch { return {}; }
 }
-function deviceName(ua = '') {
-  const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Chrome\//.test(ua) ? 'Chrome'
-    : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
-  const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS'
-    : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'unknown system';
-  return `${browser} on ${os}`;
-}
-
-/* ---------- audit log ---------- */
-async function audit(env, request, user, event, detail = '') {
-  try {
-    await env.DB.prepare('INSERT INTO audit (user_id, username, event, detail, ip, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(user ? user.id : null, user ? user.username : null, event, String(detail).slice(0, 120),
-        request.headers.get('CF-Connecting-IP'), now()).run();
-  } catch (err) { console.error('audit failed', err); }
-}
 
 /* ---------- users & sessions ---------- */
 const publicUser = u => ({
@@ -141,14 +106,12 @@ const publicUser = u => ({
   status: u.status, created_at: u.created_at, last_login: u.last_login
 });
 
-async function createSession(env, request, userId) {
+async function createSession(env, userId) {
   const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
   const t = now();
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(t).run();
-  await env.DB.prepare('DELETE FROM audit WHERE created_at < ?').bind(t - AUDIT_KEEP_SECONDS).run();
-  await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at, device, ip) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(await sha256Hex(token), userId, t, t + SESSION_SECONDS,
-      deviceName(request.headers.get('User-Agent') || ''), request.headers.get('CF-Connecting-IP')).run();
+  await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
+    .bind(await sha256Hex(token), userId, t, t + SESSION_SECONDS).run();
   return sessionCookie(token, SESSION_SECONDS);
 }
 async function currentUser(request, env) {
@@ -194,8 +157,7 @@ async function register(request, env) {
     throw err;
   }
   const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
-  await audit(env, request, user, 'register', role === 'admin' ? 'First account, made administrator' : '');
-  return json({ user: publicUser(user) }, 201, { 'Set-Cookie': await createSession(env, request, id) });
+  return json({ user: publicUser(user) }, 201, { 'Set-Cookie': await createSession(env, id) });
 }
 
 async function login(request, env) {
@@ -207,19 +169,13 @@ async function login(request, env) {
 
   const user = await env.DB.prepare('SELECT * FROM users WHERE email = ? OR username = ?')
     .bind(identifier, identifier).first();
-  if (!user) {
-    await burnTime(password);
-    await audit(env, request, null, 'login_failed', `Unknown account: ${identifier.slice(0, 40)}`);
-    return generic();
-  }
+  if (!user) { await burnTime(password); return generic(); }
   if (user.locked_until > now()) return json({ error: 'Too many failed attempts. Try again in a few minutes.' }, 429);
 
   if (!(await verifyPassword(password, user.password_hash))) {
     const fails = user.failed_count + 1;
-    await audit(env, request, user, 'login_failed', `Attempt ${fails} of ${MAX_FAILS}`);
     if (fails >= MAX_FAILS) {
       await env.DB.prepare('UPDATE users SET failed_count = 0, locked_until = ? WHERE id = ?').bind(now() + LOCK_SECONDS, user.id).run();
-      await audit(env, request, user, 'locked', 'Too many failed sign-ins');
     } else {
       await env.DB.prepare('UPDATE users SET failed_count = ? WHERE id = ?').bind(fails, user.id).run();
     }
@@ -228,15 +184,12 @@ async function login(request, env) {
   if (user.status !== 'active') return json({ error: 'This account is suspended. Contact an administrator.' }, 403);
 
   await env.DB.prepare('UPDATE users SET failed_count = 0, locked_until = 0, last_login = ? WHERE id = ?').bind(now(), user.id).run();
-  await audit(env, request, user, 'login');
-  return json({ user: publicUser(user) }, 200, { 'Set-Cookie': await createSession(env, request, user.id) });
+  return json({ user: publicUser(user) }, 200, { 'Set-Cookie': await createSession(env, user.id) });
 }
 
 async function logout(request, env) {
-  const user = await currentUser(request, env);
   const token = getCookie(request, 'session');
   if (token) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256Hex(token)).run();
-  if (user) await audit(env, request, user, 'logout');
   return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', 0) });
 }
 
@@ -248,65 +201,26 @@ async function changePassword(request, env, user) {
   if (next.length < 10 || next.length > 128) return json({ error: 'New password must be 10 to 128 characters.', field: 'next' }, 400);
   await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(next), user.id).run();
   await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();   // sign out everywhere
-  await audit(env, request, user, 'password_changed', 'All devices signed out');
-  return json({ ok: true }, 200, { 'Set-Cookie': await createSession(env, request, user.id) });
+  return json({ ok: true }, 200, { 'Set-Cookie': await createSession(env, user.id) });
 }
 
-async function sessionsApi(request, env, url, user) {
-  const token = getCookie(request, 'session');
-  const current = token ? await sha256Hex(token) : '';
-
-  if (url.pathname === '/api/sessions' && request.method === 'GET') {
-    const { results } = await env.DB.prepare(
-      'SELECT token_hash, created_at, expires_at, device, ip FROM sessions WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC'
-    ).bind(user.id, now()).all();
-    return json({
-      sessions: results.map(s => ({
-        id: s.token_hash.slice(0, 16), created_at: s.created_at, expires_at: s.expires_at,
-        device: s.device || 'Unknown device', ip: s.ip, current: s.token_hash === current
-      }))
-    });
-  }
-  if (url.pathname === '/api/sessions/revoke-others' && request.method === 'POST') {
-    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(user.id, current).run();
-    await audit(env, request, user, 'sessions_revoked', 'All other devices signed out');
-    return json({ ok: true });
-  }
-  const m = url.pathname.match(/^\/api\/sessions\/([0-9a-f]{16})$/);
-  if (m && request.method === 'DELETE') {
-    if (current.startsWith(m[1])) return json({ error: 'Use Log out to end this device’s session.' }, 400);
-    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND substr(token_hash, 1, 16) = ? AND token_hash != ?')
-      .bind(user.id, m[1], current).run();
-    await audit(env, request, user, 'session_revoked', 'One device signed out');
-    return json({ ok: true });
-  }
-  return json({ error: 'Not found' }, 404);
-}
-
-async function adminApi(request, env, url, admin) {
+async function adminUsers(request, env, url, admin) {
   if (url.pathname === '/api/admin/users' && request.method === 'GET') {
     const { results } = await env.DB.prepare(
       'SELECT id, username, email, role, status, created_at, last_login FROM users ORDER BY id'
     ).all();
     return json({ users: results });
   }
-  if (url.pathname === '/api/admin/activity' && request.method === 'GET') {
-    const { results } = await env.DB.prepare(
-      'SELECT username, event, detail, ip, created_at FROM audit ORDER BY id DESC LIMIT 100'
-    ).all();
-    return json({ events: results });
-  }
   const m = url.pathname.match(/^\/api\/admin\/users\/(\d+)$/);
   if (!m) return json({ error: 'Not found' }, 404);
   const id = Number(m[1]);
   if (id === admin.id) return json({ error: 'You cannot change your own account here.' }, 400);
-  const target = await env.DB.prepare('SELECT id, username FROM users WHERE id = ?').bind(id).first();
+  const target = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(id).first();
   if (!target) return json({ error: 'User not found.' }, 404);
 
   if (request.method === 'DELETE') {
     await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id).run();
     await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id).run();
-    await audit(env, request, admin, 'admin_delete', `Deleted ${target.username}`);
     return json({ ok: true });
   }
   if (request.method === 'PATCH') {
@@ -314,13 +228,11 @@ async function adminApi(request, env, url, admin) {
     if (body.role !== undefined) {
       if (!['user', 'admin'].includes(body.role)) return json({ error: 'Invalid role.' }, 400);
       await env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(body.role, id).run();
-      await audit(env, request, admin, 'admin_role', `${target.username} is now ${body.role}`);
     }
     if (body.status !== undefined) {
       if (!['active', 'suspended'].includes(body.status)) return json({ error: 'Invalid status.' }, 400);
       await env.DB.prepare('UPDATE users SET status = ? WHERE id = ?').bind(body.status, id).run();
       if (body.status === 'suspended') await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id).run();
-      await audit(env, request, admin, body.status === 'suspended' ? 'admin_suspend' : 'admin_reactivate', target.username);
     }
     return json({ ok: true });
   }
@@ -345,21 +257,13 @@ async function api(request, env, url) {
   if (pathname === '/api/logout' && method === 'POST') return logout(request, env);
 
   const user = await currentUser(request, env);
-  // /api/me answers 200 with user:null when signed out, so public pages don't log console errors.
-  if (pathname === '/api/me' && method === 'GET') return json({ user: user ? publicUser(user) : null });
   if (!user) return json({ error: 'Not signed in.' }, 401);
 
+  if (pathname === '/api/me' && method === 'GET') return json({ user: publicUser(user) });
   if (pathname === '/api/change-password' && method === 'POST') return changePassword(request, env, user);
-  if (pathname === '/api/activity' && method === 'GET') {
-    const { results } = await env.DB.prepare(
-      'SELECT event, detail, ip, created_at FROM audit WHERE user_id = ? ORDER BY id DESC LIMIT 50'
-    ).bind(user.id).all();
-    return json({ events: results });
-  }
-  if (pathname.startsWith('/api/sessions')) return sessionsApi(request, env, url, user);
   if (pathname.startsWith('/api/admin/')) {
     if (user.role !== 'admin') return json({ error: 'Administrators only.' }, 403);
-    return adminApi(request, env, url, user);
+    return adminUsers(request, env, url, user);
   }
   return json({ error: 'Not found' }, 404);
 }
