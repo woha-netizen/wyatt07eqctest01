@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Register | IAM Demo Application</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/app.js" defer></script>
+</head>
+<body data-page="register">
+  <header class="bar">
+    <div class="shell bar-in">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>IAM Demo</a>
+      <nav class="links" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/help">Help</a>
+        <a href="/dashboard" data-auth="in" class="hidden">Dashboard</a>
+        <a href="/security" data-auth="in" class="hidden">Security</a>
+        <a href="/activity" data-auth="in" class="hidden">Activity</a>
+        <a href="/profile" data-auth="in" class="hidden">Profile</a>
+        <a href="/admin" data-auth="admin" class="hidden">Admin</a>
+        <a href="/login" data-auth="out">Log in</a>
+        <a class="join" href="/register" data-auth="out">Register</a>
+      </nav>
+      <div class="who hidden" data-auth="in"><span id="user-chip"></span><button id="logout" class="btn-bar" type="button">Log out</button></div>
+    </div>
+  </header>
+  <main>
+    <div class="shell page">
+      <div class="form-panel">
+        <h1>Create account</h1>
+        <p>The first account on a new install becomes the administrator.</p>
+        <form id="auth-form">
+          <label for="username">Username</label>
+          <input id="username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" required>
+          <div class="hint">3 to 24 letters, numbers or underscores.</div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+          <div class="hint">At least 10 characters. A few random words work well.</div>
+          <label for="confirm">Confirm password</label>
+          <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+          <button class="btn btn-block" type="submit">Create account</button>
+          <div id="msg" class="hidden" role="alert"></div>
+        </form>
+        <p class="form-foot">Already registered? <a href="/login">Log in</a>.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="foot">
+    <div class="shell">
+      <span>IAM Demo Application. A demonstration of sign-in, roles and audit trails.</span>
+      <nav aria-label="Footer"><a href="/about">About</a><a href="/help">Help</a></nav>
+    </div>
+  </footer>
+</body>
+</html>

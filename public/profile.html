@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Profile | IAM Demo Application</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/app.js" defer></script>
+</head>
+<body data-page="profile">
+  <header class="bar">
+    <div class="shell bar-in">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>IAM Demo</a>
+      <nav class="links" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/help">Help</a>
+        <a href="/dashboard" data-auth="in" class="hidden">Dashboard</a>
+        <a href="/security" data-auth="in" class="hidden">Security</a>
+        <a href="/activity" data-auth="in" class="hidden">Activity</a>
+        <a href="/profile" data-auth="in" class="hidden">Profile</a>
+        <a href="/admin" data-auth="admin" class="hidden">Admin</a>
+        <a href="/login" data-auth="out">Log in</a>
+        <a class="join" href="/register" data-auth="out">Register</a>
+      </nav>
+      <div class="who hidden" data-auth="in"><span id="user-chip"></span><button id="logout" class="btn-bar" type="button">Log out</button></div>
+    </div>
+  </header>
+  <main>
+    <div class="shell page narrow">
+      <div class="page-head">
+        <h1>Your profile</h1>
+        <p>The details tied to your account.</p>
+      </div>
+      <dl class="facts">
+        <dt>Username</dt><dd id="p-username">—</dd>
+        <dt>Email</dt><dd id="p-email">—</dd>
+        <dt>Role</dt><dd id="p-role">—</dd>
+        <dt>Status</dt><dd id="p-status">—</dd>
+        <dt>Member since</dt><dd id="p-since">—</dd>
+        <dt>Last sign-in</dt><dd id="p-last">—</dd>
+      </dl>
+      <p class="form-foot">To change your password or sign out a device, open <a href="/security">Security</a>.</p>
+    </div>
+  </main>
+  <footer class="foot">
+    <div class="shell">
+      <span>IAM Demo Application. A demonstration of sign-in, roles and audit trails.</span>
+      <nav aria-label="Footer"><a href="/about">About</a><a href="/help">Help</a></nav>
+    </div>
+  </footer>
+</body>
+</html>
