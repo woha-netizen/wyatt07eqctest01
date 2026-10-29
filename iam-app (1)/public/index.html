@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Home | IAM Demo Application</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/app.js" defer></script>
+</head>
+<body data-page="home">
+  <header class="bar">
+    <div class="shell bar-in">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>IAM Demo</a>
+      <nav class="links" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/help">Help</a>
+        <a href="/dashboard" data-auth="in" class="hidden">Dashboard</a>
+        <a href="/security" data-auth="in" class="hidden">Security</a>
+        <a href="/activity" data-auth="in" class="hidden">Activity</a>
+        <a href="/profile" data-auth="in" class="hidden">Profile</a>
+        <a href="/admin" data-auth="admin" class="hidden">Admin</a>
+        <a href="/login" data-auth="out">Log in</a>
+        <a class="join" href="/register" data-auth="out">Register</a>
+      </nav>
+      <div class="who hidden" data-auth="in"><span id="user-chip"></span><button id="logout" class="btn-bar" type="button">Log out</button></div>
+    </div>
+  </header>
+  <main>
+    <div class="shell page">
+      <div class="hero">
+        <div>
+          <h1>IAM Demo Application</h1>
+          <p class="lead">Welcome to the Cloudflare IAM demonstration website.</p>
+          <p>This page represents a protected web application. Access should only be granted to authorised users.</p>
+          <p class="live">Application is running</p>
+          <div class="cta">
+            <a class="btn" href="/login" data-auth="out">Log in</a>
+            <a class="btn btn-quiet" href="/register" data-auth="out">Create account</a>
+            <a class="btn hidden" href="/dashboard" data-auth="in">Open dashboard</a>
+            <a class="btn btn-quiet" href="/about">How it works</a>
+          </div>
+        </div>
+        <ol class="track" aria-label="How access works">
+          <li><h3>Identify</h3><p>Create an account, or sign in with your email or username.</p></li>
+          <li><h3>Verify</h3><p>Your password is checked against a salted hash. Five wrong attempts lock the account for ten minutes.</p></li>
+          <li><h3>Authorise</h3><p>Your role decides which pages open. Administrators also reach the admin console.</p></li>
+        </ol>
+      </div>
+
+      <section class="section" aria-labelledby="matrix-h">
+        <h2 id="matrix-h">Who can open what</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Page</th><th>What it shows</th><th class="center">Visitor</th><th class="center">Member</th><th class="center">Admin</th></tr></thead>
+            <tbody>
+              <tr><td><a href="/about">About</a></td><td>How sign-in and roles work</td><td class="center"><span class="tag tag-ok">Yes</span></td><td class="center"><span class="tag tag-ok">Yes</span></td><td class="center"><span class="tag tag-ok">Yes</span></td></tr>
+              <tr><td>Dashboard</td><td>Your access badge and recent activity</td><td class="center"><span class="tag">No</span></td><td class="center"><span class="tag tag-ok">Yes</span></td><td class="center"><span class="tag tag-ok">Yes</span></td></tr>
+              <tr><td>Security</td><td>Password and signed-in devices</td><td class="center"><span class="tag">No</span></td><td class="center"><span class="tag tag-ok">Yes</span></td><td class="center"><span class="tag tag-ok">Yes</span></td></tr>
+              <tr><td>Activity</td><td>Your sign-in history</td><td class="center"><span class="tag">No</span></td><td class="center"><span class="tag tag-ok">Yes</span></td><td class="center"><span class="tag tag-ok">Yes</span></td></tr>
+              <tr><td>Admin</td><td>Manage users, read all activity</td><td class="center"><span class="tag">No</span></td><td class="center"><span class="tag">No</span></td><td class="center"><span class="tag tag-ok">Yes</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer class="foot">
+    <div class="shell">
+      <span>IAM Demo Application. A demonstration of sign-in, roles and audit trails.</span>
+      <nav aria-label="Footer"><a href="/about">About</a><a href="/help">Help</a></nav>
+    </div>
+  </footer>
+</body>
+</html>
