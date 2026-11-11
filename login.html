@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Log in | IAM Demo Application</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <!-- Cloudflare Turnstile: https://developers.cloudflare.com/turnstile/ -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/js/app.js" defer></script>
+</head>
+<body data-page="login">
+  <header class="bar">
+    <div class="shell bar-in">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>IAM Demo</a>
+      <nav class="links" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/help">Help</a>
+        <a href="/dashboard" data-auth="in" class="hidden">Dashboard</a>
+        <a href="/security" data-auth="in" class="hidden">Security</a>
+        <a href="/activity" data-auth="in" class="hidden">Activity</a>
+        <a href="/profile" data-auth="in" class="hidden">Profile</a>
+        <a href="/admin" data-auth="admin" class="hidden">Admin</a>
+        <a href="/login" data-auth="out">Log in</a>
+        <a class="join" href="/register" data-auth="out">Register</a>
+      </nav>
+      <div class="who hidden" data-auth="in"><span id="user-chip"></span><button id="logout" class="btn-bar" type="button">Log out</button></div>
+    </div>
+  </header>
+  <main>
+    <div class="shell page">
+      <div class="form-panel">
+        <h1>Log in</h1>
+        <p>Use your email or username.</p>
+        <form id="auth-form">
+          <label for="identifier">Email or username</label>
+          <input id="identifier" name="identifier" autocomplete="username" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+          <!--
+            TODO: replace with your real Turnstile SITE key from the Cloudflare
+            dashboard (Turnstile -> Add site). This placeholder is Cloudflare's
+            own published "always passes" test key, safe to keep in a repo but
+            not valid for production: https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+          -->
+          <div class="cf-turnstile"
+               data-sitekey="1x00000000000000000000AA"
+               data-callback="onTurnstileSuccess"
+               data-error-callback="onTurnstileError"
+               data-expired-callback="onTurnstileExpired">
+          </div>
+
+          <button class="btn btn-block" id="submit-btn" type="submit" disabled>Log in</button>
+          <div id="turnstile-msg" class="hint hidden" role="status">Complete the security check above to continue.</div>
+          <div id="msg" class="hidden" role="alert"></div>
+        </form>
+        <p class="form-foot">No account yet? <a href="/register">Create one</a>.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="foot">
+    <div class="shell">
+      <span>IAM Demo Application. A demonstration of sign-in, roles and audit trails.</span>
+      <nav aria-label="Footer"><a href="/about">About</a><a href="/help">Help</a></nav>
+    </div>
+  </footer>
+  <script>
+    // Turnstile callbacks: the widget's token is read from the form by
+    // app.js's submit handler (new FormData(form).get('cf-turnstile-response')).
+    // The token is NOT proof of anything by itself -- it must be verified
+    // server-side on every submit. See turnstile-verify.js for that check.
+    function onTurnstileSuccess() {
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('turnstile-msg').classList.add('hidden');
+    }
+    function onTurnstileError() {
+      document.getElementById('submit-btn').disabled = true;
+      const m = document.getElementById('turnstile-msg');
+      m.textContent = 'Security check failed to load. Refresh the page and try again.';
+      m.classList.remove('hidden');
+    }
+    function onTurnstileExpired() {
+      document.getElementById('submit-btn').disabled = true;
+      const m = document.getElementById('turnstile-msg');
+      m.textContent = 'Security check expired. Please complete it again.';
+      m.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
