@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Dashboard | IAM Demo Application</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/app.js" defer></script>
+</head>
+<body data-page="dashboard">
+  <header class="bar">
+    <div class="shell bar-in">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>IAM Demo</a>
+      <nav class="links" aria-label="Main">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/help">Help</a>
+        <a href="/dashboard" data-auth="in" class="hidden">Dashboard</a>
+        <a href="/security" data-auth="in" class="hidden">Security</a>
+        <a href="/activity" data-auth="in" class="hidden">Activity</a>
+        <a href="/profile" data-auth="in" class="hidden">Profile</a>
+        <a href="/admin" data-auth="admin" class="hidden">Admin</a>
+        <a href="/login" data-auth="out">Log in</a>
+        <a class="join" href="/register" data-auth="out">Register</a>
+      </nav>
+      <div class="who hidden" data-auth="in"><span id="user-chip"></span><button id="logout" class="btn-bar" type="button">Log out</button></div>
+    </div>
+  </header>
+  <main>
+    <div class="shell page">
+      <div class="split">
+        <section class="badge-card" aria-label="Your access badge">
+          <div class="badge-slot" aria-hidden="true"></div>
+          <div class="badge-band"><span>IAM Demo</span><span id="c-role">Member</span></div>
+          <div class="badge-body">
+            <div class="badge-initial" id="c-initial" aria-hidden="true">?</div>
+            <p class="badge-name" id="c-name">—</p>
+            <p class="badge-mail" id="c-mail">—</p>
+            <dl>
+              <div><dt>Badge no.</dt><dd id="c-no">—</dd></div>
+              <div><dt>Status</dt><dd id="c-status">—</dd></div>
+              <div><dt>Member since</dt><dd id="c-since">—</dd></div>
+            </dl>
+          </div>
+          <div class="badge-strip" aria-hidden="true"></div>
+        </section>
+
+        <div>
+          <div class="page-head">
+            <h1 id="welcome">Dashboard</h1>
+            <p>You are signed in. The server checked your session before it sent this page.</p>
+          </div>
+          <section aria-labelledby="access-h">
+            <h2 id="access-h">Your access</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Page</th><th>What it does</th><th>Open to you</th></tr></thead>
+                <tbody>
+                  <tr><td><a href="/security">Security</a></td><td>Change your password, sign out devices</td><td><span class="tag tag-ok">Yes</span></td></tr>
+                  <tr><td><a href="/activity">Activity</a></td><td>Review your sign-in history</td><td><span class="tag tag-ok">Yes</span></td></tr>
+                  <tr><td><a href="/profile">Profile</a></td><td>Your account details</td><td><span class="tag tag-ok">Yes</span></td></tr>
+                  <tr><td>Admin</td><td>Manage users and read all activity</td><td id="access-admin"><span class="tag">No</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="section" aria-labelledby="recent-h">
+            <h2 id="recent-h">Recent activity</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>When</th><th>Event</th><th>Detail</th><th>IP address</th></tr></thead>
+                <tbody id="recent-body"><tr><td class="empty" colspan="4">Loading…</td></tr></tbody>
+              </table>
+            </div>
+            <p class="small"><a href="/activity">See all activity</a></p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="foot">
+    <div class="shell">
+      <span>IAM Demo Application. A demonstration of sign-in, roles and audit trails.</span>
+      <nav aria-label="Footer"><a href="/about">About</a><a href="/help">Help</a></nav>
+    </div>
+  </footer>
+</body>
+</html>
